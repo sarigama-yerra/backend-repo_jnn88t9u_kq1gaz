@@ -1,48 +1,51 @@
 """
-Database Schemas
+Database Schemas for Magical Children's Book app
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model corresponds to a MongoDB collection. The collection name
+is the lowercase of the class name.
 """
+from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from datetime import datetime
 
-# Example schemas (replace with your own):
 
+class Book(BaseModel):
+    """Books collection schema -> collection name: "book"""
+    ownerId: Optional[str] = Field(None, description="Owner user id if logged in")
+    meta: Dict[str, Any] = Field(default_factory=dict, description="Book metadata like title, age, theme")
+    json_content: Dict[str, Any] = Field(default_factory=dict, description="Structured story content + layout JSON")
+    status: str = Field("draft", description="draft|generating|ready|error")
+    priceCents: int = Field(0, ge=0, description="Price at time of creation in cents")
+    progress: int = Field(0, ge=0, le=100, description="Generation progress 0-100")
+    download_url: Optional[str] = Field(None, description="Temporary signed download URL valid 24h when ready")
+    expires_at: Optional[datetime] = Field(None, description="Expiry of download link")
+
+
+class Order(BaseModel):
+    """Orders collection schema -> collection name: "order"""
+    bookId: str = Field(..., description="Related book id")
+    ownerId: Optional[str] = Field(None, description="User id if logged in")
+    items: List[Dict[str, Any]] = Field(default_factory=list, description="Line items")
+    subtotalCents: int = Field(..., ge=0)
+    shippingCents: int = Field(0, ge=0)
+    discountCents: int = Field(0, ge=0)
+    totalCents: int = Field(..., ge=0)
+    currency: str = Field("USD")
+    status: str = Field("created", description="created|paid|fulfilled|cancelled")
+
+
+class Price(BaseModel):
+    """Prices collection schema -> collection name: "price"""
+    sku: str = Field(..., description="ebook or hardcover")
+    label: str = Field(...)
+    amountCents: int = Field(..., ge=0)
+    currency: str = Field("USD")
+
+
+# Example user schema retained for reference if needed
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
-
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
-
-# Add your own schemas here:
-# --------------------------------------------------
-
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+    name: str
+    email: str
+    is_active: bool = True
